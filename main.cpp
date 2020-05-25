@@ -713,7 +713,7 @@ int main(int argc, char** argv)
             }
 
             float radius = 3;
-            float angle = 0.1f;
+            float angle = 0.5f;
 
             float moveX = cosf(angle * move) * radius;
             float moveZ = sinf(angle * move) * radius;
@@ -721,15 +721,15 @@ int main(int argc, char** argv)
             // Рисуем крылья
             {
                 float4x4 model1;
-                float4x4 timeModel = mul(translate4x4(float3(0.5f + moveX, -2.0f, 0.0f + moveZ)), rotate_Y_4x4(-angle * move));
+                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
                 model1 = transpose(mul(timeModel, scale4x4(float3(1.5f, 0.05f, 0.3f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
                 glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
             }
-            // рисуем пропеллер
+            // Рисуем тело
             {
                 float4x4 model1;
-                float4x4 timeModel = mul(translate4x4(float3(0.5f + moveX, -2.0f, 0.0f + moveZ)), rotate_Y_4x4(-angle * move));
+                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
                 model1 = transpose(mul(timeModel, scale4x4(float3(0.3, 0.2, 1.2f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
                 glDrawElements(GL_TRIANGLE_STRIP, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
@@ -737,17 +737,17 @@ int main(int argc, char** argv)
             // рисуем пропеллер
             {
                 float4x4 model1;
-                float4x4 timeModel = mul(translate4x4(float3(0.0f + moveX, -2.0f, 0.3f + moveZ)),
-                    mul(rotate_Y_4x4(-angle * move), rotate_Z_4x4(move * 10)));
+                float4x4 timeModel = mul(translate4x4(float3(3.0f, -2.0f, 0.15f)), rotate_Z_4x4(move * 30));
+                timeModel = mul(rotate_Y_4x4(-angle * move), timeModel);
                 model1 = transpose(mul(timeModel, scale4x4(float3(0.09, 0.25, 0.02f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
                 glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
             }
+            // рисуем пропеллер
             {
                 float4x4 model1;
-                float4x4 timeModel = mul(translate4x4(float3(1.0f, -2.0f, 0.3f)), rotate_Z_4x4(move * 10));
+                float4x4 timeModel = mul(translate4x4(float3(4.0f, -2.0f, 0.15f)), rotate_Z_4x4(move * 30));
                 timeModel = mul(rotate_Y_4x4(-angle * move), timeModel);
-                timeModel = mul(translate4x4(float3(moveX, 0.0f, moveZ)), timeModel);
                 model1 = transpose(mul(timeModel, scale4x4(float3(0.09, 0.25, 0.02f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
                 glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
