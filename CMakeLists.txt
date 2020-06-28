@@ -14,7 +14,9 @@ set(SOURCE_FILES
         Camera.h
         Camera.cpp
         ShaderProgram.h
-        ShaderProgram.cpp)
+        ShaderProgram.cpp
+        std_image.h
+        std_image.cpp)
 
 set(ADDITIONAL_INCLUDE_DIRS
         dependencies/include/GLAD)

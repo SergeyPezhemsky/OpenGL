@@ -2,7 +2,9 @@
 #include "common.h"
 #include "ShaderProgram.h"
 #include "Camera.h"
+#include "std_image.h"
 #include <stdio.h>
+#include <filesystem>
 
 //External dependencies
 #define GLFW_DLL
@@ -191,7 +193,52 @@ GLsizei CreateSphere(float radius, int numberSlices, GLuint& vao)
             break;
     }
 
-    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
+    std::vector<float> tangent, bitangent;
+
+    for (int i = 0; i < pos.size()/4; i += 1) {
+        float3 edge1, edge2;
+        float2 deltaUV1, deltaUV2;
+        if (i < pos.size() - 3) {
+            edge1 = float3(pos.at(i + 4), pos.at(i + 5), pos.at(i + 6)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            edge2 = float3(pos.at(i + 8), pos.at(i + 9), pos.at(i + 10)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            deltaUV1 = float2(texcoords.at(i + 3), texcoords.at(i + 4)) - float2(texcoords.at(i), texcoords.at(i + 1));
+            deltaUV2 = float2(texcoords.at(i + 5), texcoords.at(i + 6)) - float2(texcoords.at(i), texcoords.at(i + 1));
+        }
+        else if (i == pos.size() - 2) {
+            edge1 = float3(pos.at(i + 4), pos.at(i + 5), pos.at(i + 6)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            edge2 = float3(pos.at(0), pos.at(1), pos.at(2)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            deltaUV1 = float2(texcoords.at(i + 3), texcoords.at(i + 4)) - float2(texcoords.at(i), texcoords.at(i + 1));
+            deltaUV2 = float2(texcoords.at(0), texcoords.at(1)) - float2(texcoords.at(i), texcoords.at(i + 1));
+        }
+        else {
+            edge1 = float3(pos.at(0), pos.at(1), pos.at(2)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            edge2 = float3(pos.at(3), pos.at(4), pos.at(5)) - float3(pos.at(i), pos.at(i + 1), pos.at(i + 2));
+            deltaUV1 = float2(texcoords.at(0), texcoords.at(1)) - float2(texcoords.at(i), texcoords.at(i + 1));
+            deltaUV2 = float2(texcoords.at(2), texcoords.at(3)) - float2(texcoords.at(i), texcoords.at(i + 1));
+        }
+            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+            float3 tangent1, bitangent1;
+
+            tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+            tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+            tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+            tangent1 = normalize(tangent1);
+
+            bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+            bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+            bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+            bitangent1 = normalize(bitangent1);
+
+            tangent.push_back(tangent1.x);
+            tangent.push_back(tangent1.y);
+            tangent.push_back(tangent1.z);
+
+            bitangent.push_back(bitangent1.x);
+            bitangent.push_back(bitangent1.y);
+            bitangent.push_back(bitangent1.z);
+    }
+
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords, vboTangent, vboBitangent;
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
@@ -210,11 +257,23 @@ GLsizei CreateSphere(float radius, int numberSlices, GLuint& vao)
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
 
-    //glGenBuffers(1, &vboTexCoords);
-    //glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
-    //glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
-    //glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
-    //glEnableVertexAttribArray(2);
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
+
+    glGenBuffers(1, &vboTangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTangent);
+    glBufferData(GL_ARRAY_BUFFER, tangent.size() * sizeof(GLfloat), &tangent[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(4);
+
+    glGenBuffers(1, &vboBitangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboBitangent);
+    glBufferData(GL_ARRAY_BUFFER, bitangent.size() * sizeof(GLfloat), &bitangent[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(5);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STATIC_DRAW);
@@ -297,6 +356,16 @@ GLuint CreateCube(GLuint& vao, float4 a, float4 b, float4 c, float4 d, float4 c1
         -1.0f,  1.0f, -1.0f, 1.0f,
         -1.0f,  1.0f, -1.0f, 1.0f };
 
+    std::vector<float> texcoords = {
+        a.x, a.y,
+        b.x, b.y,
+        c.x, c.y,
+        d.x, d.y,
+        a.x, c1.y,
+        b.x, c1.y,
+        c1.x, c1.y,
+        d.x, c1.y
+    };
     std::vector<uint32_t> indices = {
         1u, 4u, 0u,
         1u, 4u, 5u,
@@ -312,7 +381,7 @@ GLuint CreateCube(GLuint& vao, float4 a, float4 b, float4 c, float4 d, float4 c1
         0u, 2u, 3u,
     };
 
-    GLuint vboVertices, vboIndices, vboNormals;
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
@@ -331,6 +400,12 @@ GLuint CreateCube(GLuint& vao, float4 a, float4 b, float4 c, float4 d, float4 c1
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
 
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
 
@@ -343,6 +418,7 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
 
     std::vector<float> norm(4 * (slices + 2), 0.0f);
     std::vector<float> positions(4 * (slices + 2), 0.0f);
+    std::vector<float> texcoords(4 * (slices + 2), 0.0f);
     positions.at(0) = (vertex.x);
     positions.at(1) = (vertex.y);
     positions.at(2) = (vertex.z);
@@ -378,7 +454,7 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
         indicies.at((i - 2) * 6 + 5) = i >= (slices + 1) ? 2u : i + 1;
     }
 
-    GLuint vboVertices, vboIndices, vboNormals;
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
 
@@ -396,6 +472,12 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
 
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(int), indicies.data(), GL_STATIC_DRAW);
 
@@ -407,6 +489,7 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
 GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float radius, UINT32 slices) {
     std::vector<float> norm(2 * 4 * (slices)+8, 0.0f);
     std::vector<float> positions(2 * 4 * (slices)+8, 0.0f);
+    std::vector<float> texcoords(2 * 2 * (slices)+8, 0.5f);
     positions.at(0) = (bottonCenter.x);
     positions.at(1) = (bottonCenter.y);
     positions.at(2) = (bottonCenter.z);
@@ -469,8 +552,7 @@ GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float 
     //for (int i = 0; i < slices * 4; i++) {
     //    std::cout << indicies.at(i*3)<<" "<<indicies.at(i*3+1)<<" "<<indicies.at(i*3+2)<<std::endl;
     //}
-    std::cout << indicies.size();
-    GLuint vboVertices, vboIndices, vboNormals;
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
 
@@ -487,6 +569,12 @@ GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float 
     glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(GLfloat), norm.data(), GL_STATIC_DRAW);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
+
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(int), indicies.data(), GL_STATIC_DRAW);
@@ -534,6 +622,7 @@ GLuint createPlane(GLuint& vao, float4 position1, float4 position2, float4 posit
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
 
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(int), indicies.data(), GL_STATIC_DRAW);
 
@@ -542,15 +631,25 @@ GLuint createPlane(GLuint& vao, float4 position1, float4 position2, float4 posit
     return indicies.size();
 }
 
-GLuint loadFile(const char* path, GLuint& vao) {
+GLuint loadFile(const char* p, GLuint& vao) {
+    struct normStuct {
+        UINT32 index;
+        float kd[3];
+    };
     std::vector<float> vertices;
     std::vector<float> norm;
     std::vector<float> norms;
     std::vector<float> tex;
+    std::vector<float> texs;
     std::vector<UINT32> indicies;
-    std::vector<UINT32> normIndicies;
-    FILE* file = fopen(path, "rb");
+    std::vector<normStuct> normIndicies;
+    std::vector<UINT32> uvIndices;
 
+    std::string path = (std::string)p;
+    path.append("obj");
+
+    FILE* file = fopen(path.c_str(), "rb");
+    float kd[3] = { 1, 1, 1 };
     while (true) {
         char lineHeader[128];
 
@@ -581,30 +680,67 @@ GLuint loadFile(const char* path, GLuint& vao) {
             norm.push_back(1.0f);
         }
         else if (strcmp(lineHeader, "f") == 0) {
-            unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+            unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
             //int matches = fscanf(file, "%d/%d %d/%d %d/%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2]);
-            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
             indicies.push_back(vertexIndex[0] - 1);
             indicies.push_back(vertexIndex[1] - 1);
             indicies.push_back(vertexIndex[2] - 1);
-            /*uvIndices.push_back(uvIndex[0]);
-            uvIndices.push_back(uvIndex[1]);
-            uvIndices.push_back(uvIndex[2]);*/
-            normIndicies.push_back(normalIndex[0] - 1);
-            normIndicies.push_back(normalIndex[1] - 1);
-            normIndicies.push_back(normalIndex[2] - 1);
+            uvIndices.push_back(uvIndex[0] - 1);
+            uvIndices.push_back(uvIndex[1] - 1);
+            uvIndices.push_back(uvIndex[2] - 1);
+            normIndicies.push_back({ normalIndex[0] - 1, {kd[0], kd[1],kd[2]} });
+            normIndicies.push_back({ normalIndex[1] - 1, {kd[0], kd[1],kd[2]} });
+            normIndicies.push_back({ normalIndex[2] - 1, {kd[0], kd[1],kd[2]} });
+        }
+        else if (strcmp(lineHeader, "usemtl") == 0) {
+            char mtlLink[128];
+            fscanf(file, "%s\n", &mtlLink);
+            FILE* file1 = fopen((std::string(p).append("mtl")).c_str(), "rb");
+            while (true) {
+                char lineHeader[128];
+                char mtlName[64];
+
+                int res = fscanf(file1, "%s %s\n", mtlName, lineHeader);
+                if (res == EOF)
+                    break;                
+                
+                if (strcmp(lineHeader, mtlLink) == 0) {
+                    char k[16];
+                    float t1, t2, t3;
+                    //fscanf(file1, "\n");
+                    fscanf(file1, "%s\n", k);
+                    fscanf(file1, "%s %d %d %d\n", k, &kd[0], &kd[1], &kd[2]);
+                    fscanf(file1, "%s %d %d %d\n", k, &t1, &t2, &t3);
+                } 
+            }
         }
 
     };
 
-    for (int i = 0; i < normIndicies.size(); i++) {
-        norms.push_back(norm.at(normIndicies.at(i) * 4));
-        norms.push_back(norm.at(normIndicies.at(i) * 4 + 1));
-        norms.push_back(norm.at(normIndicies.at(i) * 4 + 2));
-        norms.push_back(1.0f);
+    for (int i = 0; i < vertices.size() / 4; i++) {
+        for (int j = 0; j < indicies.size(); j++) {
+            if (indicies.at(j) == i) {
+                norms.push_back(norm.at(normIndicies.at(j).index * 4)/** normIndicies.at(j).kd[0]*/);
+                norms.push_back(norm.at(normIndicies.at(j).index * 4 + 1)/** normIndicies.at(j).kd[1]*/);
+                norms.push_back(norm.at(normIndicies.at(j).index * 4 + 2)/** normIndicies.at(j).kd[2]*/);
+                norms.push_back(1.0f);
+                break;
+            }
+        }
     }
 
-    GLuint vboVertices, vboIndices, vboNormals;
+    for (int i = 0; i < vertices.size() / 4; i++) {
+        for (int j = 0; j < indicies.size(); j++) {
+            if (indicies.at(j) == i) {
+                texs.push_back(tex.at(uvIndices.at(j) * 2));
+                texs.push_back(tex.at(uvIndices.at(j) * 2 + 1));
+                break;
+            }
+        }
+    }
+
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
 
@@ -622,6 +758,12 @@ GLuint loadFile(const char* path, GLuint& vao) {
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(1);
 
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texs.size() * sizeof(GLfloat), &texs[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(int), indicies.data(), GL_STATIC_DRAW);
 
@@ -630,9 +772,198 @@ GLuint loadFile(const char* path, GLuint& vao) {
     return indicies.size();
 }
 
-GLuint cave(GLuint& vao) {
-    return loadFile("../models/usemtl-issue-68.obj", vao);
+void createSkybox(GLuint& vao) {
+    float skyboxVertices[] = {         
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
+    GLuint vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 }
+
+GLuint cave(GLuint& vao) {
+    return loadFile("../models/Crate.", vao);
+}
+
+GLuint createQuad(GLuint& quadVAO) {
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+      // positions   // texCoords
+      -1.0f,  1.0f,  0.0f, 1.0f,
+      -1.0f, -1.0f,  0.0f, 0.0f,
+       1.0f, -1.0f,  1.0f, 0.0f,
+
+      -1.0f,  1.0f,  0.0f, 1.0f,
+       1.0f, -1.0f,  1.0f, 0.0f,
+       1.0f,  1.0f,  1.0f, 1.0f
+    };
+    // screen quad VAO
+    unsigned int quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    return 6;
+}
+
+GLuint intsScene(GLuint& vao, float4 a, float4 b, float4 c, float4 d, float4 c1) {
+    std::vector<float> positions = {
+       a.x, a.y, a.z, a.w,
+       b.x, b.y, b.z, b.w,
+       c.x, c.y, c.z, c.w,
+       d.x, d.y, d.z, d.w,
+       a.x, c1.y, a.z, a.w,
+       b.x, c1.y, b.z, a.w,
+       c1.x, c1.y, c1.z, c1.w,
+       d.x, c1.y, d.z, d.w
+    };
+
+    std::vector<float> normals = {
+        -1.0f, -1.0f,  1.0f, 1.0f,
+         1.0f, -1.0f, -1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f,
+         1.0f, -1.0f, -1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f };
+
+    std::vector<float> texcoords = {
+        a.x, a.y,
+        b.x, b.y,
+        c.x, c.y,
+        d.x, d.y,
+        a.x, c1.y,
+        b.x, c1.y,
+        c1.x, c1.y,
+        d.x, c1.y
+    };
+    std::vector<uint32_t> indices = {
+        1u, 4u, 0u,
+        1u, 4u, 5u,
+        1u, 5u, 2u,
+        6u, 5u, 2u,
+        6u, 7u, 2u,
+        3u, 7u, 2u,
+        3u, 7u, 0u,
+        4u, 7u, 0u,
+        4u, 6u, 5u,
+        4u, 6u, 7u,
+        0u, 2u, 1u,
+        0u, 2u, 3u,
+    };
+
+    std::vector<float> translations;
+    int index = 0;
+    float offset = 1.1f;
+    for (int y = -40; y < 40; y += 8)
+    {
+        for (int x = -40; x < 40; x += 8)
+        {
+            translations.push_back((float)x / 10.0f + offset);
+            translations.push_back((float)y / 10.0f + offset);
+        }
+    }
+
+    // store instance data in an array buffer
+    // --------------------------------------
+    unsigned int instanceVBO;
+    glGenBuffers(1, &instanceVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferData(GL_ARRAY_BUFFER, translations.size()*sizeof(GLfloat), translations.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vboIndices);
+
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vboVertices);
+    glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(GLfloat), positions.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &vboNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(1);
+
+    glGenBuffers(1, &vboTexCoords);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTexCoords);
+    glBufferData(GL_ARRAY_BUFFER, texcoords.size() * sizeof(GLfloat), &texcoords[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glEnableVertexAttribArray(3);
+    glVertexAttribDivisor(3, 1);
+
+    glBindVertexArray(0);
+
+    return indices.size();
+}
+
+
 
 int initGL()
 {
@@ -659,6 +990,75 @@ int initGL()
     return 0;
 }
 
+unsigned int loadTexture(char const* path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        //glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
+}
+
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
 
 int main(int argc, char** argv)
 {
@@ -704,8 +1104,9 @@ int main(int argc, char** argv)
     shaders[GL_FRAGMENT_SHADER] = "../shaders/lambert.frag";
     ShaderProgram lambert(shaders); GL_CHECK_ERRORS;
 
-    //GLuint vaoTriangle;
-    //GLsizei triangleIndices = CreateTriangle(vaoTriangle);
+    shaders[GL_VERTEX_SHADER] = "../shaders/tunnel.glsl";
+    shaders[GL_FRAGMENT_SHADER] = "../shaders/tunnel.frag";
+    ShaderProgram tunnel(shaders); GL_CHECK_ERRORS;
 
     GLuint vaoSphere;
     float radius = 1.0f;
@@ -737,15 +1138,67 @@ int main(int argc, char** argv)
     GLuint vaoCave;
     GLsizei Cave = cave(vaoCave);
 
+    GLuint vaoInts;
+    GLsizei ints = intsScene(vaoInts, float4(0.1f, -5.0f, 0.0f, 1.0f), float4(0.5f, -5.0f, 0.0f, 1.0f), float4(0.5f, -5.0f, 0.3f, 1.0f), float4(0.1f, -5.0f, 0.3f, 1.0f), float4(0.5f, -4.9f, 0.3f, 1.0f));
+
+    GLuint vaoSkybox;
+    createSkybox(vaoSkybox);
+
+    GLuint quadVao;
+    GLsizei quad = createQuad(quadVao);
+
     glViewport(0, 0, WIDTH, HEIGHT);  GL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);  GL_CHECK_ERRORS;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float move = 0.0f;
+    float triggerVar = 0.0f;
+    signed int diffuseMap = loadTexture("../models/container2.png");
+    unsigned int specularMap = loadTexture("../models/container2_specular.png");
+    unsigned int normalMap = loadTexture("../models/wood-normal.jpg");
+
+    std::vector<std::string> faces
+    {
+        "../models/skybox/right.jpg",
+        "../models/skybox/left.jpg",
+        "../models/skybox/top.jpg",
+        "../models/skybox/bottom.jpg",
+        "../models/skybox/front.jpg",
+        "../models/skybox/back.jpg"
+    };
+    unsigned int cubemapTexture = loadCubemap(faces);
+
+    tunnel.StartUseShader();
+    tunnel.SetUniform("screenTexture", 15);
+
+    unsigned int hdrFBO;
+    glGenFramebuffers(1, &hdrFBO);
+    // create floating point color buffer
+    unsigned int colorBuffer;
+    glGenTextures(1, &colorBuffer);
+    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // create depth buffer (renderbuffer)
+
+    unsigned int rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WIDTH, HEIGHT);
+    // attach buffers
+
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     //цикл обработки сообщений и отрисовки сцены каждый кадр
     while (!glfwWindowShouldClose(window))
     {
-
         //считаем сколько времени прошло за кадр
         GLfloat currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -758,61 +1211,110 @@ int main(int argc, char** argv)
         glClearColor(0.9f, 0.95f, 0.97f, 1.0f); GL_CHECK_ERRORS;
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); GL_CHECK_ERRORS;
 
+        glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+        glEnable(GL_DEPTH_TEST); // тест глубины
+
+
         lambert.StartUseShader(); GL_CHECK_ERRORS;
 
+        lambert.SetUniform("material.diffuse", 6);
+        lambert.SetUniform("material.specular", 1);
+        lambert.SetUniform("normalMap", 5);
         float4x4 view = camera.GetViewMatrix();
         float4x4 projection = projectionMatrixTransposed(camera.zoom, float(WIDTH) / float(HEIGHT), 0.1f, 1000.0f);
         float4x4 model;
 
-        lambert.SetUniform("view", view);       GL_CHECK_ERRORS;
         lambert.SetUniform("projection", projection); GL_CHECK_ERRORS;
+        // SKkybox
+        lambert.SetUniform("type", 1);
+        lambert.SetUniform("material.light", 2);
+        lambert.SetUniform("skybox", 2);
 
-        //glBindVertexArray(vaoSphere);
-        //{
-        //  model = transpose(translate4x4(float3(0.0f, -2.0f, 0.0f)));
-        //  lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-        //  glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+        glDepthFunc(GL_LEQUAL);
+        float4x4 view1;
+        view1.row[0] = camera.GetViewMatrix().row[0];
+        view1.row[1] = camera.GetViewMatrix().row[1];
+        view1.row[2] = camera.GetViewMatrix().row[2];
+        lambert.SetUniform("view", view1);
+        glBindVertexArray(vaoSkybox);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS);
 
-        //  model = transpose(translate4x4(float3(0.0f, 2.0f, 0.0f)));
-        //  lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-        //  glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-        //}
-        //glBindVertexArray(0); GL_CHECK_ERRORS;
+        lambert.SetUniform("view", view);
+        lambert.SetUniform("type", 0);
 
-        ////glBindVertexArray(vaoTriangle); GL_CHECK_ERRORS;
-        ////glBindVertexArray(vaoTriangle); GL_CHECK_ERRORS;
-        ////{
-        ////  model = transpose(mul(translate4x4(float3(0.0f, -1.0f, 0.0f)), rotate_Y_4x4(45.0f)));
-        ////  lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-        ////  glDrawElements(GL_TRIANGLE_STRIP, triangleIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-        ////}
-        ////glBindVertexArray(0); GL_CHECK_ERRORS;
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        // bind specular map
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
 
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, normalMap);
 
-        //glBindVertexArray(vaoCone); GL_CHECK_ERRORS;
-        //glBindVertexArray(vaoCone); GL_CHECK_ERRORS;
-        //{
-        //    model = transpose(mul(translate4x4(float3(0.0f, 1.0f, 0.0f)), rotate_X_4x4(-45.0f)));
-        //    lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-        //    glDrawElements(GL_TRIANGLE_STRIP, coneIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-        //}
+        lambert.SetUniform("dirLight[0].direction", float3(-0.0f, -5.0f, -0.0f));
+        lambert.SetUniform("dirLight[0].ambient", float3(0.05f, 0.05f, 0.05f));
+        lambert.SetUniform("dirLight[0].diffuse", float3(0.4f, 0.4f, 0.4f));
+        lambert.SetUniform("dirLight[0].specular", float3(0.5f, 0.5f, 0.5f));
+        lambert.SetUniform("camPos", camera.pos);
+        lambert.SetUniform("material.light", 1);
+        lambert.SetUniform("material.shininess", 32.0f);
 
+        lambert.SetUniform("spotLight.position", camera.pos);
+        lambert.SetUniform("spotLight.direction", camera.front);
+        lambert.SetUniform("spotLight.ambient", float3(0.0f, 0.0f, 0.0f));
+        lambert.SetUniform("spotLight.diffuse", float3(1.0f, 1.0f, 1.0f));
+        lambert.SetUniform("spotLight.specular", float3(1.0f, 1.0f, 1.0f));
+        lambert.SetUniform("spotLight.constant", 1.0f);
+        lambert.SetUniform("spotLight.linear", 0.09f);
+        lambert.SetUniform("spotLight.quadratic", 0.032f);
+        lambert.SetUniform("spotLight.cutOff", cos(12.5f * LiteMath::DEG_TO_RAD));
+        lambert.SetUniform("spotLight.outerCutOff", cos(15.0f * LiteMath::DEG_TO_RAD));
+
+        lambert.SetUniform("camPos", camera.pos);
 
         if (keys[GLFW_KEY_Q]) {
-            glBindVertexArray(vaoCylinder); GL_CHECK_ERRORS;
-            {
-                //model = transpose(mul(translate4x4(float3(0.0f, -1.0f, 0.0f)), rotate_Y_4x4(45.0f)));
-                lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-                glDrawElements(GL_TRIANGLES, cylinderIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            }
+            //if ((int)move % 2 == 0) {
+                glBindVertexArray(vaoCylinder); GL_CHECK_ERRORS;
+                {
+                    lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].position", float3(0.0f, -2.0f, 0.0f)); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].ambient", float3(0.55f, 0.55f, 0.55f)); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].diffuse", float3(0.8f, 0.8f, 0.8f)); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].specular", float3(1.0f, 1.0f, 1.0f)); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].constant", 1.0f); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].linear", 0.09f); GL_CHECK_ERRORS;
+                    lambert.SetUniform("pointLights[0].quadratic", 0.632f); GL_CHECK_ERRORS;
 
+                    glDrawElements(GL_TRIANGLES, cylinderIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+               // }
+            }
+            lambert.SetUniform("material.light", 0);
+            glBindVertexArray(vaoSphere); GL_CHECK_ERRORS;
+            {
+                float4x4 model1 = model;
+                model1 = transpose(translate4x4(float3(0.0f, 3.0f, 0.0f)));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+
+                glDrawElements(GL_TRIANGLE_STRIP, sphereIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
             glBindVertexArray(vaoCube); GL_CHECK_ERRORS;
             {
                 float4x4 model1 = model;
                 std::vector<float4> stairs;
+
                 for (int i = 0; i < 30; i++) {
-                    model1 = transpose(mul(translate4x4(float3(0.0f, i * 0.14f, 0.0f)), rotate_Y_4x4(0.5f * i)));
+
+                    if (camera.pos.x * camera.pos.x + camera.pos.y * camera.pos.y + camera.pos.z * camera.pos.z < 5) {
+                        triggerVar+=0.0015;
+                    }
+
+                    model1 = transpose(mul(translate4x4(float3(0.0f, i * 0.14f, 0.0f)), rotate_Y_4x4(0.5f * i + triggerVar)));
                     lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+
                     glDrawElements(GL_TRIANGLE_STRIP, cubeIndices, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
                 }
             }
@@ -822,23 +1324,8 @@ int main(int argc, char** argv)
 
             float moveX = cosf(angle * move) * radius;
             float moveZ = sinf(angle * move) * radius;
+
             glBindVertexArray(vaoPlaneWings); GL_CHECK_ERRORS;
-            // Рисуем крылья
-            {
-                float4x4 model1;
-                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
-                model1 = transpose(mul(timeModel, scale4x4(float3(1.5f, 0.05f, 0.3f))));
-                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
-                glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            }
-            // Рисуем тело
-            {
-                float4x4 model1;
-                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
-                model1 = transpose(mul(timeModel, scale4x4(float3(0.3, 0.2, 1.2f))));
-                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
-                glDrawElements(GL_TRIANGLE_STRIP, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            }
             // рисуем пропеллер
             {
                 float4x4 model1;
@@ -846,6 +1333,7 @@ int main(int argc, char** argv)
                 timeModel = mul(rotate_Y_4x4(-angle * move), timeModel);
                 model1 = transpose(mul(timeModel, scale4x4(float3(0.09, 0.25, 0.02f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+
                 glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
             }
             // рисуем пропеллер
@@ -855,48 +1343,72 @@ int main(int argc, char** argv)
                 timeModel = mul(rotate_Y_4x4(-angle * move), timeModel);
                 model1 = transpose(mul(timeModel, scale4x4(float3(0.09, 0.25, 0.02f))));
                 lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLE_STRIP, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
+            // Рисуем крылья
+            {
+                float4x4 model1;
+                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
+                model1 = transpose(mul(timeModel, scale4x4(float3(1.5f, 0.05f, 0.3f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+
                 glDrawElements(GL_TRIANGLES, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
             }
+            // Рисуем тело
+            {
+                float4x4 model1;
+                float4x4 timeModel = mul(rotate_Y_4x4(-angle * move), translate4x4(float3(3.5f, -2.0f, 0.0f)));
+                model1 = transpose(mul(timeModel, scale4x4(float3(0.3, 0.2, 1.2f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
 
-            //glBindVertexArray(vaoPropeller); GL_CHECK_ERRORS;
-            //glBindVertexArray(vaoPropeller); GL_CHECK_ERRORS;
-            //{
-            //    float4x4 model1;
-            //    lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
-            //    glDrawElements(GL_TRIANGLE_STRIP, propeller, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            //}
+                glDrawElements(GL_TRIANGLE_STRIP, planeWings, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
 
-
-            //glBindVertexArray(vaoPropeller); GL_CHECK_ERRORS; 
-            //{
-            //    float4x4 model1;
-            //    model1 = transpose(mul(translate4x4(float3(0.7f, 0.0f, 0.0f)), rotate_Z_4x4(move * LiteMath::DEG_TO_RAD)));
-            //    lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
-            //    glDrawElements(GL_TRIANGLE_STRIP, propeller, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            //}
             move += 0.03f;
         }
 
         if (keys[GLFW_KEY_E]) {
             glBindVertexArray(vaoCave); GL_CHECK_ERRORS;
             {
-                lambert.SetUniform("model", model); GL_CHECK_ERRORS;
-                glDrawElements(GL_TRIANGLES, Cave, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+                lambert.SetUniform("material.light", 0);
+                float4x4 model1 = model;
+                model1 = transpose(mul(model1, scale4x4(float3(0.001f, 0.001f, 0.001f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLE_STRIP, Cave, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
             }
+            glBindVertexArray(vaoInts); GL_CHECK_ERRORS;
+            {
+                lambert.SetUniform("type", 2);
+                lambert.SetUniform("model", model); GL_CHECK_ERRORS;
+                glDrawElementsInstanced(GL_TRIANGLES, ints, GL_UNSIGNED_INT, 0, 100); GL_CHECK_ERRORS;
+
+            }
+
         }
 
         lambert.StopUseShader(); GL_CHECK_ERRORS;
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        tunnel.StartUseShader();
+        glBindVertexArray(quadVao);
+        glActiveTexture(GL_TEXTURE15);
+        glBindTexture(GL_TEXTURE_2D, colorBuffer);    // use the color attachment texture as the texture of the quad plane
+
+        tunnel.SetUniform("hdr", 0);
+        tunnel.SetUniform("exposure", 1.0f);
+        tunnel.SetUniform("gamma", 1.0f);
+
+        glDrawArrays(GL_TRIANGLES, 0, quad); GL_CHECK_ERRORS;
+
+        tunnel.StopUseShader(); GL_CHECK_ERRORS;
 
         glfwSwapBuffers(window);
 
     }
 
-    glDeleteVertexArrays(1, &vaoCube);
-    glDeleteVertexArrays(1, &vaoSphere);
-    //glDeleteVertexArrays(1, &vaoTriangle);
-    glDeleteVertexArrays(1, &vaoCone);
-    glDeleteVertexArrays(1, &vaoCylinder);
-    glDeleteVertexArrays(1, &vaoPlane);
     glfwTerminate();
     return 0;
 }
