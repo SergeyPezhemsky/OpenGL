@@ -1207,13 +1207,13 @@ int main(int argc, char** argv)
         glfwPollEvents();
         doCameraMovement(camera, deltaTime);
 
-        //очищаем экран каждый кадр
-        glClearColor(0.9f, 0.95f, 0.97f, 1.0f); GL_CHECK_ERRORS;
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); GL_CHECK_ERRORS;
+
 
         glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
         glEnable(GL_DEPTH_TEST); // тест глубины
-
+                //очищаем экран каждый кадр
+        glClearColor(0.9f, 0.95f, 0.97f, 1.0f); GL_CHECK_ERRORS;
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); GL_CHECK_ERRORS;
 
         lambert.StartUseShader(); GL_CHECK_ERRORS;
 
@@ -1387,10 +1387,13 @@ int main(int argc, char** argv)
         }
 
         lambert.StopUseShader(); GL_CHECK_ERRORS;
+        
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glDisable(GL_DEPTH_TEST);
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
         glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+        glDisable(GL_DEPTH_TEST);
+        
 
         tunnel.StartUseShader();
         glBindVertexArray(quadVao);

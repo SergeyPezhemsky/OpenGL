@@ -32,13 +32,16 @@ void main()
           vFragPosition = vec3(model * vertex);
           vNormal = normalize(mat3(transpose(inverse(model))) * normal.xyz);
 
-          vec3 T = normalize(vec3(model * vec4(tangent,   0.0)));
-          vec3 B = normalize(vec3(model * vec4(bitangent, 0.0)));
-          vec3 N = normalize(vec3(model * normal));
-          mat3 TBN = mat3(T, B, N);
+         mat3 normalMatrix = transpose(inverse(mat3(model)));
+         vec3 T = normalize(normalMatrix * tangent);
+         vec3 N = normalize(normalMatrix * vNormal);
+         T = normalize(T - dot(T, N) * N);
+         vec3 B = cross(N, T);
+    
+         TBN = transpose(mat3(T, B, N));    
   }
   else if (type == 2){
-         gl_Position = projection * view * model * vertex + vec4(intsVar, 0.0f, 0.0f);
+         gl_Position = projection * view * model * (vertex+vec4(intsVar, 0.0f, 0.0f));
          vTexCoords = texCoords;
          vNormal = normalize(mat3(transpose(inverse(model))) * normal.xyz);
          vFragPosition = vec3(model * vertex) + vec3(intsVar, 1.0f);
