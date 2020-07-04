@@ -57,10 +57,17 @@ void OnKeyboardPressed(GLFWwindow* window, int key, int scancode, int action, in
         break;
     case GLFW_KEY_Q:
         keys[GLFW_KEY_E] = false;
+        keys[GLFW_KEY_R] = false;
         keys[key] = true;
         break;
     case GLFW_KEY_E:
         keys[GLFW_KEY_Q] = false;
+        keys[GLFW_KEY_R] = false;
+        keys[key] = true;
+        break;
+    case GLFW_KEY_R:
+        keys[GLFW_KEY_Q] = false;
+        keys[GLFW_KEY_E] = false;
         keys[key] = true;
         break;
     case GLFW_KEY_2:
@@ -127,6 +134,25 @@ void doCameraMovement(Camera& camera, GLfloat deltaTime)
         camera.ProcessKeyboard(BACKWARD, deltaTime);
     if (keys[GLFW_KEY_D])
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+    if (camera.pos.y > 0.46f) {
+        camera.pos.y = 0.46f;
+    };
+    if (camera.pos.y < -1.144f) {
+        camera.pos.y = -1.144f;
+    };
+    if (camera.pos.x < -0.3f) {
+        camera.pos.x = -0.3f;
+    }
+    if (camera.pos.x > 7.2f) {
+        camera.pos.x = 7.2f;
+    }
+    if (camera.pos.z > 5.4f) {
+        camera.pos.z = 5.4f;
+    }
+    if (camera.pos.z < 3.5f) {
+        camera.pos.z = 3.5f;
+    };
 }
 
 
@@ -347,14 +373,13 @@ GLuint CreateCube(GLuint& vao, float4 a, float4 b, float4 c, float4 d, float4 c1
     };
 
     std::vector<float> normals = {
-        -1.0f, -1.0f,  1.0f, 1.0f,
-         1.0f, -1.0f, -1.0f, 1.0f,
-        -1.0f,  1.0f, -1.0f, 1.0f,
-         1.0f, -1.0f, -1.0f, 1.0f,
-        -1.0f,  1.0f, -1.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 1.0f,
-        -1.0f,  1.0f, -1.0f, 1.0f,
-        -1.0f,  1.0f, -1.0f, 1.0f };
+        -1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         1.0, 0.0, 0.0,
+         0.0, -1.0, 0.0,
+         0.0, 0.0, 1.0,
+         0.0, 0.0, -1.0
+};
 
     std::vector<float> texcoords = {
         a.x, a.y,
@@ -442,7 +467,7 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
         norm.at(i + 3) = 1.0f;
     }
 
-    std::vector<UINT32>indicies(slices * 3 * 2, 0.0f);
+    std::vector<uint32_t>indicies(slices * 3 * 2, 0.0f);
 
     for (unsigned int i = 2; i < slices + 2; i++) {
         indicies.at((i - 2) * 6 + 0) = 1u;
@@ -486,7 +511,7 @@ GLuint CreateCone(GLuint& vao, float4 center, float4 vertex, float radius, int s
     return indicies.size();
 }
 
-GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float radius, UINT32 slices) {
+GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float radius, uint32_t slices) {
     std::vector<float> norm(2 * 4 * (slices)+8, 0.0f);
     std::vector<float> positions(2 * 4 * (slices)+8, 0.0f);
     std::vector<float> texcoords(2 * 2 * (slices)+8, 0.5f);
@@ -530,7 +555,7 @@ GLuint createCylinder(GLuint& vao, float4 bottonCenter, float4 topCenter, float 
     //for (int i = 0; i < 2 * slices + 2; i++) {
     //    std::cout << i <<": "<< positions.at(4*i)<< " " << positions.at(4*i+1)<<std::endl;
     //}
-    std::vector<UINT32>indicies(slices * 12, 0.0f);
+    std::vector<uint32_t>indicies(slices * 12, 0.0f);
 
     for (unsigned int i = 1; i < slices + 1; i++) {
         indicies.at((i - 1) * 12 + 0) = 0u;
@@ -600,7 +625,7 @@ GLuint createPlane(GLuint& vao, float4 position1, float4 position2, float4 posit
         1.0f, 0.0f, 0.0f, 1.0f,
         1.0f, 0.0f, 0.0f, 1.0f,
     };
-    std::vector<UINT32>indicies = {
+    std::vector<uint32_t>indicies = {
         0u, 1u, 2u,
         2u, 3u, 0u
     };
@@ -633,7 +658,7 @@ GLuint createPlane(GLuint& vao, float4 position1, float4 position2, float4 posit
 
 GLuint loadFile(const char* p, GLuint& vao) {
     struct normStuct {
-        UINT32 index;
+        uint32_t index;
         float kd[3];
     };
     std::vector<float> vertices;
@@ -641,12 +666,18 @@ GLuint loadFile(const char* p, GLuint& vao) {
     std::vector<float> norms;
     std::vector<float> tex;
     std::vector<float> texs;
-    std::vector<UINT32> indicies;
+    std::vector<uint32_t> indicies;
     std::vector<normStuct> normIndicies;
-    std::vector<UINT32> uvIndices;
+    std::vector<uint32_t> uvIndices;
 
     std::string path = (std::string)p;
     path.append("obj");
+
+    int fileType = 0; // Вручную пишем вначале файла его тип (11: поверхность состоит из 4 вершин, указаны индексы нормалей и текстурных коор)
+    // 21: Поверхность состоит из 4 вершин, однако без указания текст.
+    // 22: Тоже самое но из 3
+    // 31: Поверхность состоит их 4 вершин, однако без указания нормалей
+    // 32: Тоже самое но из 3
 
     FILE* file = fopen(path.c_str(), "rb");
     float kd[3] = { 1, 1, 1 };
@@ -656,6 +687,11 @@ GLuint loadFile(const char* p, GLuint& vao) {
         int res = fscanf(file, "%s", lineHeader);
         if (res == EOF)
             break;
+
+        if (fileType == 0) {
+            fileType = atoi(lineHeader);
+            std::cout << fileType;
+        }
 
         if (strcmp(lineHeader, "v") == 0) {
             float x, y, z;
@@ -681,17 +717,75 @@ GLuint loadFile(const char* p, GLuint& vao) {
         }
         else if (strcmp(lineHeader, "f") == 0) {
             unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
+            vertexIndex[3] = -5;
+            vertexIndex[2] = -5;
+            int matches;
             //int matches = fscanf(file, "%d/%d %d/%d %d/%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2]);
-            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
-            indicies.push_back(vertexIndex[0] - 1);
-            indicies.push_back(vertexIndex[1] - 1);
-            indicies.push_back(vertexIndex[2] - 1);
-            uvIndices.push_back(uvIndex[0] - 1);
-            uvIndices.push_back(uvIndex[1] - 1);
-            uvIndices.push_back(uvIndex[2] - 1);
-            normIndicies.push_back({ normalIndex[0] - 1, {kd[0], kd[1],kd[2]} });
-            normIndicies.push_back({ normalIndex[1] - 1, {kd[0], kd[1],kd[2]} });
-            normIndicies.push_back({ normalIndex[2] - 1, {kd[0], kd[1],kd[2]} });
+            switch (fileType) {
+            case 11:
+            case 12:
+                matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
+                indicies.push_back(vertexIndex[0] - 1);
+                indicies.push_back(vertexIndex[1] - 1);
+                uvIndices.push_back(uvIndex[0] - 1);
+                uvIndices.push_back(uvIndex[1] - 1);
+                normIndicies.push_back({ normalIndex[0] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[1] - 1, {kd[0], kd[1],kd[2]} });
+                if (vertexIndex[2] != -5 && vertexIndex[2] != NULL) {
+                    normIndicies.push_back({ normalIndex[2] - 1, {kd[0], kd[1],kd[2]} });
+                    uvIndices.push_back(uvIndex[2] - 1);
+                    indicies.push_back(vertexIndex[2] - 1);
+                }
+                else {
+                    std::cout << "wwwww";
+                }
+                if (vertexIndex[3] != -5 && vertexIndex[3] != NULL) {
+                    uvIndices.push_back(uvIndex[3] - 1);
+                    indicies.push_back(vertexIndex[3] - 1);
+                    normIndicies.push_back({ normalIndex[3] - 1, {kd[0], kd[1],kd[2]} });
+                }
+                break;
+            case 21:
+                matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
+                indicies.push_back(vertexIndex[0] - 1);
+                indicies.push_back(vertexIndex[1] - 1);
+                indicies.push_back(vertexIndex[2] - 1);
+                indicies.push_back(vertexIndex[3] - 1);
+                normIndicies.push_back({ normalIndex[0] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[1] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[2] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[3] - 1, {kd[0], kd[1],kd[2]} });
+                break;
+            case 22:
+                matches = fscanf(file, "%d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2]);
+                indicies.push_back(vertexIndex[0] - 1);
+                indicies.push_back(vertexIndex[1] - 1);
+                indicies.push_back(vertexIndex[2] - 1);
+                normIndicies.push_back({ normalIndex[0] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[1] - 1, {kd[0], kd[1],kd[2]} });
+                normIndicies.push_back({ normalIndex[2] - 1, {kd[0], kd[1],kd[2]} });
+                break;
+            case 31:
+                matches = fscanf(file, "%d/%d %d/%d %d/%d %d/%d\n", &vertexIndex[0], &uvIndex[0], &vertexIndex[1], &uvIndex[1], &vertexIndex[2], &uvIndex[2], &vertexIndex[3], &uvIndex[3]);
+                indicies.push_back(vertexIndex[0] - 1);
+                indicies.push_back(vertexIndex[1] - 1);
+                indicies.push_back(vertexIndex[2] - 1);
+                indicies.push_back(vertexIndex[3] - 1);
+                uvIndices.push_back(uvIndex[0] - 1);
+                uvIndices.push_back(uvIndex[1] - 1);
+                uvIndices.push_back(uvIndex[2] - 1);
+                uvIndices.push_back(uvIndex[3] - 1);
+                break;
+            case 32:
+                matches = fscanf(file, "%d/%d %d/%d %d/%d\n", &vertexIndex[0], &uvIndex[0], &vertexIndex[1], &uvIndex[1], &vertexIndex[2], &uvIndex[2]);
+                indicies.push_back(vertexIndex[0] - 1);
+                indicies.push_back(vertexIndex[1] - 1);
+                indicies.push_back(vertexIndex[2] - 1);
+                uvIndices.push_back(uvIndex[0] - 1);
+                uvIndices.push_back(uvIndex[1] - 1);
+                uvIndices.push_back(uvIndex[2] - 1);
+                break;
+            }
         }
         else if (strcmp(lineHeader, "usemtl") == 0) {
             char mtlLink[128];
@@ -718,29 +812,85 @@ GLuint loadFile(const char* p, GLuint& vao) {
 
     };
 
-    for (int i = 0; i < vertices.size() / 4; i++) {
-        for (int j = 0; j < indicies.size(); j++) {
-            if (indicies.at(j) == i) {
-                norms.push_back(norm.at(normIndicies.at(j).index * 4)/** normIndicies.at(j).kd[0]*/);
-                norms.push_back(norm.at(normIndicies.at(j).index * 4 + 1)/** normIndicies.at(j).kd[1]*/);
-                norms.push_back(norm.at(normIndicies.at(j).index * 4 + 2)/** normIndicies.at(j).kd[2]*/);
-                norms.push_back(1.0f);
-                break;
+
+    if (fileType != 31 && fileType != 32) {
+        for (int i = 0; i < vertices.size() / 4; i++) {
+            for (int j = 0; j < indicies.size(); j++) {
+                if (indicies.at(j) == i) {
+                    norms.push_back(norm.at(normIndicies.at(j).index * 4) * normIndicies.at(j).kd[0]);
+                    norms.push_back(norm.at(normIndicies.at(j).index * 4 + 1) * normIndicies.at(j).kd[1]);
+                    norms.push_back(norm.at(normIndicies.at(j).index * 4 + 2) * normIndicies.at(j).kd[2]);
+                    norms.push_back(1.0f);
+                    break;
+                }
             }
         }
     }
+    else {
+        norms = norm;
+    }
 
-    for (int i = 0; i < vertices.size() / 4; i++) {
-        for (int j = 0; j < indicies.size(); j++) {
-            if (indicies.at(j) == i) {
-                texs.push_back(tex.at(uvIndices.at(j) * 2));
-                texs.push_back(tex.at(uvIndices.at(j) * 2 + 1));
-                break;
+    if (fileType != 21 && fileType != 22) {
+        for (int i = 0; i < vertices.size() / 4; i++) {
+            for (int j = 0; j < indicies.size(); j++) {
+                if (indicies.at(j) == i) {
+                    texs.push_back(tex.at(uvIndices.at(j) * 2));
+                    texs.push_back(tex.at(uvIndices.at(j) * 2 + 1));
+                    break;
+                }
             }
         }
     }
+    else {
+        texs = tex;
+    }
 
-    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords;
+    std::vector<float> tangent, bitangent;
+
+    for (int i = 0; i < vertices.size() / 4; i += 1) {
+        float3 edge1, edge2;
+        float2 deltaUV1, deltaUV2;
+        if (i < vertices.size() - 3) {
+            edge1 = float3(vertices.at(i + 4), vertices.at(i + 5), vertices.at(i + 6)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            edge2 = float3(vertices.at(i + 8), vertices.at(i + 9), vertices.at(i + 10)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            deltaUV1 = float2(texs.at(i + 3), texs.at(i + 4)) - float2(texs.at(i), texs.at(i + 1));
+            deltaUV2 = float2(texs.at(i + 5), texs.at(i + 6)) - float2(texs.at(i), texs.at(i + 1));
+        }
+        else if (i == vertices.size() - 2) {
+            edge1 = float3(vertices.at(i + 4), vertices.at(i + 5), vertices.at(i + 6)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            edge2 = float3(vertices.at(0), vertices.at(1), vertices.at(2)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            deltaUV1 = float2(texs.at(i + 3), texs.at(i + 4)) - float2(texs.at(i), texs.at(i + 1));
+            deltaUV2 = float2(texs.at(0), texs.at(1)) - float2(texs.at(i), texs.at(i + 1));
+        }
+        else {
+            edge1 = float3(vertices.at(0), vertices.at(1), vertices.at(2)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            edge2 = float3(vertices.at(3), vertices.at(4), vertices.at(5)) - float3(vertices.at(i), vertices.at(i + 1), vertices.at(i + 2));
+            deltaUV1 = float2(texs.at(0), texs.at(1)) - float2(texs.at(i), texs.at(i + 1));
+            deltaUV2 = float2(texs.at(2), texs.at(3)) - float2(texs.at(i), texs.at(i + 1));
+        }
+        float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+        float3 tangent1, bitangent1;
+
+        tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+        tangent1 = normalize(tangent1);
+
+        bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        bitangent1 = normalize(bitangent1);
+
+        tangent.push_back(tangent1.x);
+        tangent.push_back(tangent1.y);
+        tangent.push_back(tangent1.z);
+
+        bitangent.push_back(bitangent1.x);
+        bitangent.push_back(bitangent1.y);
+        bitangent.push_back(bitangent1.z);
+    }
+
+    GLuint vboVertices, vboIndices, vboNormals, vboTexCoords, vboTangent, vboBitangent;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vboIndices);
 
@@ -764,11 +914,28 @@ GLuint loadFile(const char* p, GLuint& vao) {
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(2);
 
+    glGenBuffers(1, &vboTangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboTangent);
+    glBufferData(GL_ARRAY_BUFFER, tangent.size() * sizeof(GLfloat), &tangent[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(4);
+
+    glGenBuffers(1, &vboBitangent);
+    glBindBuffer(GL_ARRAY_BUFFER, vboBitangent);
+    glBufferData(GL_ARRAY_BUFFER, bitangent.size() * sizeof(GLfloat), &bitangent[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(5);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndices);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(int), indicies.data(), GL_STATIC_DRAW);
 
     glBindVertexArray(0);
 
+
+    norm.~vector();
+    norms.~vector();
+    tex.~vector();
+    texs.~vector();
     return indicies.size();
 }
 
@@ -828,7 +995,19 @@ void createSkybox(GLuint& vao) {
 }
 
 GLuint cave(GLuint& vao) {
+    return loadFile("../models/wall2.", vao);
+}
+
+GLuint dangeonRoof(GLuint& vao) {
+    return loadFile("../models/texture.", vao);
+}
+
+GLuint conteiner(GLuint& vao) {
     return loadFile("../models/Crate.", vao);
+}
+
+GLuint gate(GLuint& vao) {
+    return loadFile("../models/chest.", vao);
 }
 
 GLuint createQuad(GLuint& quadVAO) {
@@ -1147,16 +1326,28 @@ int main(int argc, char** argv)
     GLuint quadVao;
     GLsizei quad = createQuad(quadVao);
 
+    GLuint dungeonRoofVao;
+    GLsizei dungeonRoofIn = dangeonRoof(dungeonRoofVao);
+
+    GLuint conteinerVao;
+    GLsizei conteinerIn = dangeonRoof(conteinerVao);
+
+    GLuint chestVao;
+    GLsizei chestIn = gate(chestVao);
+
     glViewport(0, 0, WIDTH, HEIGHT);  GL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);  GL_CHECK_ERRORS;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float move = 0.0f;
     float triggerVar = 0.0f;
-    signed int diffuseMap = loadTexture("../models/container2.png");
+    unsigned int diffuseMap = loadTexture("../models/wall3.jpg");
+    unsigned int dungeonRoofTex = loadTexture("../models/wood_planks_new_0025_01_s.jpg");
     unsigned int specularMap = loadTexture("../models/container2_specular.png");
     unsigned int normalMap = loadTexture("../models/wood-normal.jpg");
-
+    unsigned int groundTex = loadTexture("../models/ground.jpg");
+    unsigned int conteinerTex = loadTexture("../models/container2.png");
+    unsigned int chestTex = loadTexture("../models/chest.jpg");
     std::vector<std::string> faces
     {
         "../models/skybox/right.jpg",
@@ -1220,6 +1411,7 @@ int main(int argc, char** argv)
         lambert.SetUniform("material.diffuse", 6);
         lambert.SetUniform("material.specular", 1);
         lambert.SetUniform("normalMap", 5);
+        lambert.SetUniform("useNormalMap", true);
         float4x4 view = camera.GetViewMatrix();
         float4x4 projection = projectionMatrixTransposed(camera.zoom, float(WIDTH) / float(HEIGHT), 0.1f, 1000.0f);
         float4x4 model;
@@ -1368,22 +1560,150 @@ int main(int argc, char** argv)
         }
 
         if (keys[GLFW_KEY_E]) {
-            glBindVertexArray(vaoCave); GL_CHECK_ERRORS;
-            {
-                lambert.SetUniform("material.light", 0);
-                float4x4 model1 = model;
-                model1 = transpose(mul(model1, scale4x4(float3(0.001f, 0.001f, 0.001f))));
-                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
-                glDrawElements(GL_TRIANGLE_STRIP, Cave, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
-            }
             glBindVertexArray(vaoInts); GL_CHECK_ERRORS;
             {
+                lambert.SetUniform("material.light", 0);
                 lambert.SetUniform("type", 2);
                 lambert.SetUniform("model", model); GL_CHECK_ERRORS;
                 glDrawElementsInstanced(GL_TRIANGLES, ints, GL_UNSIGNED_INT, 0, 100); GL_CHECK_ERRORS;
 
             }
 
+        }
+
+        if (keys[GLFW_KEY_R]) {
+            glBindVertexArray(vaoCave); GL_CHECK_ERRORS;
+            {
+                lambert.SetUniform("useNormalMap", false);
+                lambert.SetUniform("material.light", 0);
+                for (int i = 0; i < 16; i++) {
+                    float4x4 model1;
+                    if (i < 8) {
+                        model1 = mul(model, translate4x4(float3(i, -1.5f, 3.0f)));
+                        model1 = mul(model1, rotate_X_4x4(-90 * LiteMath::DEG_TO_RAD));
+                        model1 = transpose(mul(model1, scale4x4(float3(0.1f, 0.1f, 0.1f))));
+                    } 
+                    else {
+                        model1 = mul(model, translate4x4(float3(i-8, -1.5f, 5.6f)));
+                        model1 = mul(model1, rotate_Z_4x4(-180 * LiteMath::DEG_TO_RAD));
+                        model1 = mul(model1, rotate_X_4x4(90 * LiteMath::DEG_TO_RAD));
+                        model1 = transpose(mul(model1, scale4x4(float3(0.1f, 0.1f, 0.1f))));
+                    }
+                    lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                    glDrawElements(GL_TRIANGLES, Cave, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+                }
+
+
+                float4x4 model1 = mul(model, translate4x4(float3(8, 0.8f, 4.3f)));
+                model1 = mul(model1, rotate_Z_4x4(-90 * LiteMath::DEG_TO_RAD));
+                model1 = mul(model1, rotate_Y_4x4(90 * LiteMath::DEG_TO_RAD));
+                model1 = transpose(mul(model1, scale4x4(float3(0.12f, 0.1f, 0.1f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLES, Cave, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
+
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_2D, dungeonRoofTex);
+            lambert.SetUniform("useNormalMap", true);
+
+            glBindVertexArray(dungeonRoofVao); GL_CHECK_ERRORS;
+            {
+                float4x4 model1;
+                for (int i = 0; i < 8; i++) {
+                    if (i == 4) {
+                        glActiveTexture(GL_TEXTURE6);
+                        glBindTexture(GL_TEXTURE_2D, groundTex);
+                    }
+                    if (i < 4) {
+                        model1 = mul(model, translate4x4(float3(i * 2, 0.0f, 0.0f)));
+                        model1 = mul(model1, translate4x4(float3(0.63f + i, 0.56f, 2.8f)));
+                    }
+                    else {
+                        model1 = mul(model, translate4x4(float3((i - 4) * 2, 0.0f, 0.0f)));
+                        model1 = mul(model1, translate4x4(float3(0.63f + i - 4, -1.344f, 2.8f)));
+                    }
+                    model1 = mul(model1, rotate_Z_4x4(90 * LiteMath::DEG_TO_RAD));
+                    model1 = transpose(mul(model1, scale4x4(float3(0.004f, 0.06f, 0.06f))));
+                    lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                    glDrawElements(GL_TRIANGLES, dungeonRoofIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+                }
+            }
+
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_2D, conteinerTex);
+
+            glBindVertexArray(conteinerVao); GL_CHECK_ERRORS;
+            {
+                float4x4 model1;
+                for (int i = 0; i < 4; i++) {
+                    if (i % 2 == 0) {
+                        model1 = mul(model, translate4x4(float3(i, -1.0f, 3.0f)));
+                    }
+                    else {
+                        model1 = mul(model, translate4x4(float3(i + 1, -1.0f, 5.1f)));
+                    }
+                    model1 = transpose(mul(model1, scale4x4(float3(0.01f, 0.01f, 0.01f))));
+                    lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                    glDrawElements(GL_TRIANGLES, conteinerIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+                }
+
+                model1 = mul(model, translate4x4(float3(5, -1.0f, 5.1f)));
+                model1 = transpose(mul(model1, scale4x4(float3(0.01f, 0.01f, 0.01f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLES, conteinerIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+                model1 = mul(model, translate4x4(float3(7.65f, -1.0f, 3.0f)));
+                model1 = transpose(mul(model1, scale4x4(float3(0.01f, 0.01f, 0.01f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLES, conteinerIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+
+                model1 = mul(model, translate4x4(float3(7.65f, -1.0f, 4.0f)));
+                model1 = transpose(mul(model1, scale4x4(float3(0.01f, 0.01f, 0.01f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLES, conteinerIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
+            
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_2D, chestTex);
+            lambert.SetUniform("useNormalMap", false);
+            glBindVertexArray(chestVao); GL_CHECK_ERRORS;
+            {
+                float4x4 model1;
+                model1 = mul(model, translate4x4(float3(5.2f, -1.2f, 3.3f)));
+                model1 = mul(model1, rotate_Y_4x4(-90*LiteMath::DEG_TO_RAD));
+                model1 = transpose(mul(model1, scale4x4(float3(0.005f, 0.005f, 0.005f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLE_STRIP, chestIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
+
+            glBindVertexArray(chestVao); GL_CHECK_ERRORS;
+            {
+                float4x4 model1;
+                model1 = mul(model, translate4x4(float3(3.2f, -1.2f, 3.3f)));
+                model1 = mul(model1, rotate_Y_4x4(-90 * LiteMath::DEG_TO_RAD));
+                model1 = transpose(mul(model1, scale4x4(float3(0.005f, 0.005f, 0.005f))));
+                lambert.SetUniform("model", model1); GL_CHECK_ERRORS;
+                glDrawElements(GL_TRIANGLE_STRIP, chestIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
+            }
+
+            float pos = 0;
+            for(int i = 0; i < 100; i++) {
+                if (abs(camera.pos.x - pos - 2.5) > abs(camera.pos.x - pos) && abs(camera.pos.x - pos) < abs(camera.pos.x - pos + 2.5)) {
+                    break;
+                }
+                pos += 2.5;
+            }
+
+            for (int i = 0; i < 6; i++) {
+                std::string index = std::to_string(i);
+                lambert.SetUniform("pointLights[" + index + "].position", float3(pos, -0.0f, i % 2 == 0 ? 3.2f : 5.4f)); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].ambient", float3(0.55f, 0.55f, 0.55f)); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].diffuse", float3(0.8f, 0.8f, 0.8f)); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].specular", float3(1.0f, 1.0f, 1.0f)); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].constant", 1.0f); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].linear", 0.09f); GL_CHECK_ERRORS;
+                lambert.SetUniform("pointLights[" + index + "].quadratic", 0.632f); GL_CHECK_ERRORS;
+            }
         }
 
         lambert.StopUseShader(); GL_CHECK_ERRORS;

@@ -11,7 +11,7 @@ out vec2 vTexCoords;
 out vec3 vFragPosition;
 out vec3 vNormal;
 out vec3 skyBoxTex;
-mat3 TBN;
+out mat3 TBN;
 
 uniform mat4 model;
 uniform mat4 view;

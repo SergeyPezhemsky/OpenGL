@@ -54,7 +54,7 @@ out vec4 outColor;
 uniform DirLight dirLight[NR_DIR_LIGHTS];
 
 
-#define NR_POINT_LIGHTS 1 
+#define NR_POINT_LIGHTS 6 
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 
 uniform Material material;
@@ -63,6 +63,7 @@ uniform SpotLight spotLight;
 uniform samplerCube skybox;
 uniform sampler2D normalMap;
 uniform sampler2D hdr;
+uniform bool useNormalMap;
 
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
@@ -85,18 +86,22 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 tangentFragPos)
 {
-   // vec3 lightDir = normalize(light.position - fragPos);
+    vec3 lightDir;
+    if (useNormalMap){
+        vec3 tangentLightPos = TBN * light.position;
 
-    vec3 tangentLightPos = TBN * light.position;
-
-    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+        vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+    }
+    else {
+        lightDir = normalize(light.position - fragPos);
+    }
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
+    //vec3 reflectDir = reflect(-lightDir, normal);
 
-    //vec3 halfwayDir = normalize(lightDir + viewDir); 
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 halfwayDir = normalize(lightDir + viewDir); 
+    float spec = pow(max(dot(viewDir, halfwayDir), 0.0), material.shininess);
     // attenuation
     float distance1 = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance1 + light.quadratic * (distance1 * distance1));    
@@ -158,10 +163,15 @@ void main()
            color += CalcDirLight(dirLight[i], normal, viewDir);
        }
 
-       color += CalcSpotLight(spotLight, normal, vFragPosition, viewDir); 
+      //color += CalcSpotLight(spotLight, normal, vFragPosition, viewDir); 
 
        for (int i = 0; i < NR_POINT_LIGHTS; i++){
-           color += CalcPointLight(pointLights[i], normal, vFragPosition, viewDir, tangentFragPos);
+            if (useNormalMap){
+                color += CalcPointLight(pointLights[i], normal, vFragPosition, viewDir, tangentFragPos);
+            }
+            else {
+                color += CalcPointLight(pointLights[i], vNormal, vFragPosition, viewDir, tangentFragPos);
+            }
        }
 
        vec3 hdrColor = texture(material.diffuse, vTexCoords).rgb;
