@@ -17,6 +17,7 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform int type;
+uniform float move;
 
 void main()
 {
@@ -41,7 +42,14 @@ void main()
          TBN = transpose(mat3(T, B, N));    
   }
   else if (type == 2){
-         gl_Position = projection * view * model * (vertex+vec4(intsVar, 0.0f, 0.0f));
+         vec3 instMove;
+         if (gl_InstanceID % 2 == 0) {
+            instMove = vec3(sin(intsVar.x + move*2) - 20, cos(move)*intsVar.y, cos(intsVar.x + move) + 500);
+         } 
+         else {
+            instMove = vec3(sin(intsVar.x + move) - 20, sin(move)*intsVar.x, cos(intsVar.y + move*2) + 500);
+         }
+         gl_Position = projection * view * model * (vertex+vec4(instMove, 0.0f));
          vTexCoords = texCoords;
          vNormal = normalize(mat3(transpose(inverse(model))) * normal.xyz);
          vFragPosition = vec3(model * vertex) + vec3(intsVar, 1.0f);
