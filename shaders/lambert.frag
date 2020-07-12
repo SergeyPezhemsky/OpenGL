@@ -78,9 +78,10 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 halfwayDir = normalize(lightDir + viewDir);  
     float spec = pow(max(dot(viewDir, halfwayDir), 0.0), material.shininess);
 
-    vec3 ambient  = light.ambient  * vec3(texture(material.diffuse, vTexCoords));
-    vec3 diffuse  = light.diffuse  * diff * vec3(texture(material.diffuse, vTexCoords));
+    vec3 ambient = light.ambient * vec3(texture(material.diffuse, vTexCoords));
+    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, vTexCoords));
     vec3 specular = light.specular * spec * vec3(texture(material.specular, vTexCoords));
+
     return (ambient + diffuse + specular);
 }
 
@@ -113,11 +114,12 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
+
     return (ambient + diffuse + specular);
 
 }
 
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec4 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -134,9 +136,9 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     // combine results
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, vTexCoords));
-    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, vTexCoords));
-    vec3 specular = light.specular * spec * vec3(texture(material.specular, vTexCoords));
+    vec4 ambient = vec4(light.ambient * vec3(texture(material.diffuse, vTexCoords)), 0.0f);
+    vec4 diffuse = vec4(light.diffuse * diff * vec3(texture(material.diffuse, vTexCoords)), 0.0f);
+    vec4 specular = vec4(light.specular * spec * vec3(texture(material.specular, vTexCoords)), 0.0f);
     ambient *= attenuation * intensity;
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
@@ -176,8 +178,10 @@ void main()
 
        vec3 hdrColor = texture(material.diffuse, vTexCoords).rgb;
        vec3 color1 = hdrColor / (hdrColor + vec3(1.0));
-       //outColor = vec4(color, 1.0f)/(1+vec4(color, 1.0f));
-       outColor = vec4(color, 1.0f);
+//       //outColor = vec4(color, 1.0f)/(1+vec4(color, 1.0f));
+////       if(color.a < 0.7)
+////        discard;
+       outColor = vec4(color, texture(material.diffuse, vTexCoords).a);
    }
    else {
         vec3 color = texture(skybox, skyBoxTex).rgb;

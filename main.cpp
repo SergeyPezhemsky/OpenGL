@@ -1391,7 +1391,9 @@ int main(int argc, char** argv)
 
 	glViewport(0, 0, WIDTH, HEIGHT);  GL_CHECK_ERRORS;
 	glEnable(GL_DEPTH_TEST);  GL_CHECK_ERRORS;
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	float move = 0.0f;
 	float triggerVar = 0.0f;
@@ -1400,8 +1402,8 @@ int main(int argc, char** argv)
 	unsigned int specularMap = loadTexture("../models/container2_specular.png");
 	unsigned int normalMap = loadTexture("../models/wood-normal.jpg");
 	unsigned int groundTex = loadTexture("../models/ground.jpg");
-	unsigned int conteinerTex = loadTexture("../models/container2.png");
-	unsigned int chestTex = loadTexture("../models/chest.jpg");
+	unsigned int conteinerTex = loadTexture("../models/blending_transparent_window.png");
+	unsigned int chestTex = loadTexture("../models/blending_transparent_window.png");
 	std::vector<std::string> faces
 	{
 		"../models/skybox/right.jpg",
@@ -1413,33 +1415,33 @@ int main(int argc, char** argv)
 	};
 	unsigned int cubemapTexture = loadCubemap(faces);
 
-	tunnel.StartUseShader();
-	tunnel.SetUniform("screenTexture", 15);
+	//tunnel.StartUseShader();
+	//tunnel.SetUniform("screenTexture", 15);
 
-	unsigned int hdrFBO;
-	glGenFramebuffers(1, &hdrFBO);
-	// create floating point color buffer
-	unsigned int colorBuffer;
-	glGenTextures(1, &colorBuffer);
-	glBindTexture(GL_TEXTURE_2D, colorBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// create depth buffer (renderbuffer)
+	//unsigned int hdrFBO;
+	//glGenFramebuffers(1, &hdrFBO);
+	//// create floating point color buffer
+	//unsigned int colorBuffer;
+	//glGenTextures(1, &colorBuffer);
+	//glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//// create depth buffer (renderbuffer)
 
-	unsigned int rboDepth;
-	glGenRenderbuffers(1, &rboDepth);
-	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WIDTH, HEIGHT);
-	// attach buffers
+	//unsigned int rboDepth;
+	//glGenRenderbuffers(1, &rboDepth);
+	//glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WIDTH, HEIGHT);
+	//// attach buffers
 
-	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+	//glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+	//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
 
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		std::cout << "Framebuffer not complete!" << std::endl;
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	//	std::cout << "Framebuffer not complete!" << std::endl;
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	//цикл обработки сообщений и отрисовки сцены каждый кадр
 	while (!glfwWindowShouldClose(window))
@@ -1454,8 +1456,8 @@ int main(int argc, char** argv)
 
 
 
-		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-		glEnable(GL_DEPTH_TEST); // тест глубины
+		//glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+		//glEnable(GL_DEPTH_TEST); // тест глубины
 				//очищаем экран каждый кадр
 		glClearColor(0.9f, 0.95f, 0.97f, 1.0f); GL_CHECK_ERRORS;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); GL_CHECK_ERRORS;
@@ -1762,24 +1764,24 @@ int main(int argc, char** argv)
 		lambert.StopUseShader(); GL_CHECK_ERRORS;
 
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-		glDisable(GL_DEPTH_TEST);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		//glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+		//glDisable(GL_DEPTH_TEST);
 
 
-		tunnel.StartUseShader();
-		glBindVertexArray(quadVao);
-		glActiveTexture(GL_TEXTURE15);
-		glBindTexture(GL_TEXTURE_2D, colorBuffer);    // use the color attachment texture as the texture of the quad plane
+		//tunnel.StartUseShader();
+		//glBindVertexArray(quadVao);
+		//glActiveTexture(GL_TEXTURE15);
+		//glBindTexture(GL_TEXTURE_2D, colorBuffer);    // use the color attachment texture as the texture of the quad plane
 
-		tunnel.SetUniform("hdr", 0);
-		tunnel.SetUniform("exposure", 1.0f);
-		tunnel.SetUniform("gamma", 1.0f);
+		//tunnel.SetUniform("hdr", 0);
+		//tunnel.SetUniform("exposure", 1.0f);
+		//tunnel.SetUniform("gamma", 1.0f);
 
-		glDrawArrays(GL_TRIANGLES, 0, quad); GL_CHECK_ERRORS;
+		//glDrawArrays(GL_TRIANGLES, 0, quad); GL_CHECK_ERRORS;
 
-		tunnel.StopUseShader(); GL_CHECK_ERRORS;
+		//tunnel.StopUseShader(); GL_CHECK_ERRORS;
 
 		glfwSwapBuffers(window);
 
