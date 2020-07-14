@@ -1402,8 +1402,8 @@ int main(int argc, char** argv)
 	unsigned int specularMap = loadTexture("../models/container2_specular.png");
 	unsigned int normalMap = loadTexture("../models/wood-normal.jpg");
 	unsigned int groundTex = loadTexture("../models/ground.jpg");
-	unsigned int conteinerTex = loadTexture("../models/blending_transparent_window.png");
-	unsigned int chestTex = loadTexture("../models/blending_transparent_window.png");
+	unsigned int conteinerTex = loadTexture("../models/wood_planks_new_0025_01_s.jpg");
+	unsigned int chestTex = loadTexture("../models/wood_planks_new_0025_01_s.jpg");
 	std::vector<std::string> faces
 	{
 		"../models/skybox/right.jpg",
@@ -1414,6 +1414,9 @@ int main(int argc, char** argv)
 		"../models/skybox/back.jpg"
 	};
 	unsigned int cubemapTexture = loadCubemap(faces);
+
+
+
 
 	//tunnel.StartUseShader();
 	//tunnel.SetUniform("screenTexture", 15);
@@ -1463,6 +1466,22 @@ int main(int argc, char** argv)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); GL_CHECK_ERRORS;
 
 		lambert.StartUseShader(); GL_CHECK_ERRORS;
+		std::vector<float4> color = {
+		float4(0.05f, 0.11f, 0.22f, 1.0f),
+		float4(0.39f, 0.04f, 0.04f, 1.0f),
+		float4(0.18f, 0.47f, 0.67f, 1.0f),
+		float4(0.43f, 0.65f, 0.82f, 1.0f),
+		float4(0.78f, 0.91f, 0.1f, 1.0f),
+		};
+
+		for (unsigned int i = 0; i < color.size(); i++)
+		{
+			std::string ss = std::to_string(i);
+			lambert.SetUniform(("colors[" + ss + "]"), color[i]);
+		}
+		lambert.SetUniform("maxLight", 3.0f);
+		lambert.SetUniform("minLight", 0.0f);
+
 		lambert.SetUniform("move", move);
 		lambert.SetUniform("material.diffuse", 6);
 		lambert.SetUniform("material.specular", 1);
@@ -1741,17 +1760,10 @@ int main(int argc, char** argv)
 				glDrawElements(GL_TRIANGLES, chestIn, GL_UNSIGNED_INT, nullptr); GL_CHECK_ERRORS;
 			}
 
-			float pos = 0;
-			for (int i = 0; i < 100; i++) {
-				if (abs(camera.pos.x - pos - 2.5) > abs(camera.pos.x - pos) && abs(camera.pos.x - pos) < abs(camera.pos.x - pos + 2.5)) {
-					break;
-				}
-				pos += 2.5;
-			}
 
 			for (int i = 0; i < 6; i++) {
 				std::string index = std::to_string(i);
-				lambert.SetUniform("pointLights[" + index + "].position", float3(pos, -0.0f, i % 2 == 0 ? 3.2f : 5.4f)); GL_CHECK_ERRORS;
+				lambert.SetUniform("pointLights[" + index + "].position", float3(0.0f, -0.0f, i % 2 == 0 ? 3.2f : 5.4f)); GL_CHECK_ERRORS;
 				lambert.SetUniform("pointLights[" + index + "].ambient", float3(0.55f, 0.55f, 0.55f)); GL_CHECK_ERRORS;
 				lambert.SetUniform("pointLights[" + index + "].diffuse", float3(0.8f, 0.8f, 0.8f)); GL_CHECK_ERRORS;
 				lambert.SetUniform("pointLights[" + index + "].specular", float3(1.0f, 1.0f, 1.0f)); GL_CHECK_ERRORS;

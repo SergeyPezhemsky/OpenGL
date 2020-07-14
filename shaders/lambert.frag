@@ -65,6 +65,9 @@ uniform sampler2D normalMap;
 uniform sampler2D hdr;
 uniform bool useNormalMap;
 
+uniform float maxLight;
+uniform float minLight;
+uniform vec4 colors[5];
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 {
@@ -181,7 +184,20 @@ void main()
 //       //outColor = vec4(color, 1.0f)/(1+vec4(color, 1.0f));
 ////       if(color.a < 0.7)
 ////        discard;
-       outColor = vec4(color, texture(material.diffuse, vTexCoords).a);
+
+		float res = color[0] + color[1] + color[2];
+
+		int size = int(color.length());
+		float part =  float((maxLight - minLight)/size);
+
+		for (int i = 0; i < size; ++i) {
+
+		   if (res > (minLight + part*(i+1))) {
+		      outColor = colors[i];
+		   } 
+
+		}
+       //outColor = vec4(color, 1.0f);
    }
    else {
         vec3 color = texture(skybox, skyBoxTex).rgb;
